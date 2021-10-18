@@ -17,12 +17,13 @@ use App\Http\Controllers\KPIController;
 
 
 // kpi endpoints
-Route::get('/kpi/transactions', [KPIController::class, 'GetTransactions']);
-Route::get('/kpi/users', [KPIController::class, 'GetUsersCount']);
-Route::get('/kpi/products/{interval}', [KPIController::class, 'GetProductsCountByInterval']);
-Route::get('/kpi/merchants/:from/:to', [KPIController::class, 'GetMerchants']);
+Route::get('/kpi/users/{start}/{end}', [KPIController::class, 'GetUsersCount']);
+Route::get('/kpi/transactions/{start}/{end}', [KPIController::class, 'GetTransactions']);
+
+Route::get('/kpi/products/{start}/{end}', [KPIController::class, 'GetProductsCountByInterval']);
+Route::get('/kpi/merchants/{start}/{end}', [KPIController::class, 'GetMerchants']);
 
 Route::get('/kpi/sellers/new', [KPIController::class, 'GetNewSellers']);
+Route::get('/kpi/sellers/{interval}', [KPIController::class, 'GetUniqueSellers']);
 
-Route::get('/kpi/sellers/:from/:to', [KPIController::class, 'GetUniqueSellers']);
 Route::get('/kpi/merchants/median', [KPIController::class, 'GetMerchantsMedian']);

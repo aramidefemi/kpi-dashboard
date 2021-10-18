@@ -10,61 +10,65 @@ use Illuminate\Support\Facades\DB;
 
 class KPIController extends Controller
 {
-    public function GetTransactions (Request $request)
+    public function GetTransactions (Request $request, $start, $end)
     {
         $purchases = Purchase::groupBy('currency')
         ->selectRaw("currency, SUM(totalamount) as sales, COUNT(code) as count, SUM(merchant_commission) as merchant_revenue, SUM(selar_profit) as profit")
+        ->whereBetween('created_at', [$start, $end])
         ->get();
         return [
             'data' => $purchases
         ];
     }
-    public function GetUsersCount (Request $request)
+    public function GetUsersCount (Request $request,  $start, $end)
     {
-        $count = User::all()->count();
-
+        $usersCount = DB::table('users')
+        ->whereBetween('created_at', [$start, $end])
+        ->count();
         return [
-            'data' => [ 'users' => $count]
+            'data' => [ 'users' => $usersCount]
         ];
     }
-    public function GetProductsCountByInterval (Request $request, $interval)
+    public function GetProductsCountByInterval (Request $request, $start, $end)
     {
-        // $date = new DateTime($dt2);
-        // $dt2=$date->format('Y-m-d');
-
-        $product =  DB::select('SELECT COUNT(*) as count FROM `products` WHERE created_at BETWEEN DATE_SUB(CURDATE(), INTERVAL :interval DAY) AND CURDATE()', [ 'interval' => $interval]);
-
+        $productCount = DB::table('products')
+        ->whereBetween('created_at', [$start, $end])
+        ->count();
         return [
-            'data' =>  $product[0]
+            'data' =>  $productCount
         ];
     }
 
-    public function GetNewSellers (Request $request)
+    public function GetNewSellers (Request $request, $interval)
     {
-
-
+        $merchants = DB::select('SELECT COUNT(*) as count FROM `users` INNER JOIN Customers ON Orders.CustomerID=Customers.CustomerID;', [ 'interval' => $interval]);
         return [
-            'data' =>     []
+            'data' =>  $merchants
         ];
     }
-    public function GetMerchants (Request $request)
+    public function GetMerchants (Request $request, $start, $end)
     {
-
+        $merchants = User::groupBy('users.id')
+        ->join('products', 'users.id', '=', 'products.merchant_id')
+        // ->whereBetween('users.created_at', [$start, $end])
+        ->count();
         return [
-            'data' =>     []
+            'data' =>  $merchants
         ];
     }
+
 
     public function GetUniqueSellers (Request $request)
     {
 
+        $sellers = DB::select('SELECT users.id as count FROM users INNER JOIN purchases ON users.id=purchases.merchant_id GROUP BY users.id');
         return [
-            'data' =>     []
+            'data' =>  count($sellers)
         ];
     }
     public function GetMerchantsMedian (Request $request)
     {
-
+        $sellers = DB::select('SELECT users.id as count FROM users INNER JOIN purchases ON users.id=purchases.merchant_id GROUP BY users.id');
         return [
             'data' =>     []
         ];
