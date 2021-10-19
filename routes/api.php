@@ -21,9 +21,10 @@ Route::get('/kpi/users/{start}/{end}', [KPIController::class, 'GetUsersCount']);
 Route::get('/kpi/transactions/{start}/{end}', [KPIController::class, 'GetTransactions']);
 
 Route::get('/kpi/products/{start}/{end}', [KPIController::class, 'GetProductsCountByInterval']);
+
 Route::get('/kpi/merchants/{start}/{end}', [KPIController::class, 'GetMerchants']);
 
-Route::get('/kpi/sellers/new', [KPIController::class, 'GetNewSellers']);
-Route::get('/kpi/sellers/{interval}', [KPIController::class, 'GetUniqueSellers']);
+Route::get('/kpi/sellers/first-time/{start}/{end}', [KPIController::class, 'GetNewSellers']);
+Route::get('/kpi/sellers/{start}/{end}', [KPIController::class, 'GetUniqueSellers']);
 
-Route::get('/kpi/merchants/median', [KPIController::class, 'GetMerchantsMedian']);
+Route::get('/kpi/merchants/median/{start}/{end}', [KPIController::class, 'GetMerchantsMedian']);

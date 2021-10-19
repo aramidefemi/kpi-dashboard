@@ -39,38 +39,46 @@ class KPIController extends Controller
         ];
     }
 
-    public function GetNewSellers (Request $request, $interval)
+    public function GetNewSellers (Request $request,  $start, $end)
     {
-        $merchants = DB::select('SELECT COUNT(*) as count FROM `users` INNER JOIN Customers ON Orders.CustomerID=Customers.CustomerID;', [ 'interval' => $interval]);
+        $newSellers = DB::select('SELECT COUNT(*) as count FROM ( SELECT * FROM purchases as d ORDER BY d.created_at ASC LIMIT 1 ) as dd WHERE dd.created_at BETWEEN :start and :end',
+         [ 'start' =>  $start,  'end' => $end ]);
         return [
-            'data' =>  $merchants
+            'data' =>  $newSellers
         ];
     }
     public function GetMerchants (Request $request, $start, $end)
     {
         $merchants = User::groupBy('users.id')
         ->join('products', 'users.id', '=', 'products.merchant_id')
-        // ->whereBetween('users.created_at', [$start, $end])
-        ->count();
+        ->whereBetween('users.created_at', [$start, $end])
+        ->get();
         return [
-            'data' =>  $merchants
+            'data' =>  count($merchants)
         ];
     }
 
 
-    public function GetUniqueSellers (Request $request)
+    public function GetUniqueSellers (Request $request, $start, $end)
     {
 
-        $sellers = DB::select('SELECT users.id as count FROM users INNER JOIN purchases ON users.id=purchases.merchant_id GROUP BY users.id');
+        $sellers = User::groupBy('users.id')
+        ->join('purchases', 'users.id', '=', 'purchases.merchant_id')
+        ->whereBetween('users.created_at', [$start, $end])
+        ->get();
         return [
             'data' =>  count($sellers)
         ];
     }
-    public function GetMerchantsMedian (Request $request)
+    public function GetMerchantsMedian (Request $request, $start, $end)
     {
-        $sellers = DB::select('SELECT users.id as count FROM users INNER JOIN purchases ON users.id=purchases.merchant_id GROUP BY users.id');
+        $sellers = DB::select('SELECT AVG(dd.totalamount) AS median_val FROM ( SELECT d.totalamount, @rownum := @rownum +1 AS `row_number`, @total_rows := @rownum FROM purchases AS d, ( SELECT @rownum := 0 ) r WHERE d.created_at BETWEEN :start and :end ORDER BY d.totalamount ) AS dd WHERE dd.row_number IN( FLOOR((@total_rows +1) / 2), FLOOR((@total_rows +2) / 2) )',
+         ['start' =>  $start,  'end' => $end ] )
+        ;
         return [
-            'data' =>     []
+            'data' =>  $sellers
         ];
     }
 }
+
+
