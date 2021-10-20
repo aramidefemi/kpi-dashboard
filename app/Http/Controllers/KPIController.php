@@ -13,11 +13,11 @@ class KPIController extends Controller
     public function GetTransactions (Request $request, $start, $end)
     {
         $purchases = Purchase::groupBy('currency')
-        ->selectRaw("currency, SUM(totalamount) as sales, COUNT(code) as count, SUM(merchant_commission) as merchant_revenue, SUM(selar_profit) as profit")
+        ->selectRaw("currency,  SUM(merchant_commission) as merchant_revenue, SUM(selar_profit) as profit")
         ->whereBetween('created_at', [$start, $end])
         ->get();
         return [
-            'data' => $purchases
+            'data' => [ 'purchases' => $purchases]
         ];
     }
     public function GetUsersCount (Request $request,  $start, $end)
@@ -35,7 +35,7 @@ class KPIController extends Controller
         ->whereBetween('created_at', [$start, $end])
         ->count();
         return [
-            'data' =>  $productCount
+            'data' => [ 'products' => $productCount]
         ];
     }
 
@@ -44,7 +44,7 @@ class KPIController extends Controller
         $newSellers = DB::select('SELECT COUNT(*) as count FROM ( SELECT * FROM purchases as d ORDER BY d.created_at ASC LIMIT 1 ) as dd WHERE dd.created_at BETWEEN :start and :end',
          [ 'start' =>  $start,  'end' => $end ]);
         return [
-            'data' =>  $newSellers
+            'data' =>  [ 'new_seller' => $newSellers[0]]
         ];
     }
     public function GetMerchants (Request $request, $start, $end)
@@ -54,7 +54,7 @@ class KPIController extends Controller
         ->whereBetween('users.created_at', [$start, $end])
         ->get();
         return [
-            'data' =>  count($merchants)
+            'data' =>  [ 'merchants' => count($merchants)]
         ];
     }
 
@@ -67,7 +67,7 @@ class KPIController extends Controller
         ->whereBetween('users.created_at', [$start, $end])
         ->get();
         return [
-            'data' =>  count($sellers)
+            'data' =>  [ 'sellers' => count($sellers)]
         ];
     }
     public function GetMerchantsMedian (Request $request, $start, $end)
@@ -76,7 +76,7 @@ class KPIController extends Controller
          ['start' =>  $start,  'end' => $end ] )
         ;
         return [
-            'data' =>  $sellers
+            'data' =>  $sellers[0]
         ];
     }
 }
