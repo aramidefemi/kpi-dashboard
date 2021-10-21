@@ -14,7 +14,8 @@ class KPIController extends Controller
     {
         $purchases = Purchase::groupBy('currency')
         ->selectRaw("currency,  SUM(merchant_commission) as merchant_revenue, SUM(selar_profit) as profit")
-        ->whereBetween('created_at', [$start, $end])
+        ->where('status', 'paid')
+        ->whereBetween('transaction_date', [$start, $end])
         ->get();
         return [
             'data' => [ 'purchases' => $purchases]
