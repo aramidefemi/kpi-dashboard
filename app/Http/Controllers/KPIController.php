@@ -13,7 +13,7 @@ class KPIController extends Controller
     public function GetTransactions (Request $request, $start, $end)
     {
         $purchases = Purchase::groupBy('currency')
-        ->selectRaw("currency,  SUM(merchant_commission) as merchant_revenue, SUM(selar_profit) as profit")
+        ->selectRaw("currency, SUM(totalamount) as merchant_sales SUM(merchant_commission) as merchant_revenue, SUM(selar_profit) as profit")
         ->where('status', 'paid')
         ->whereBetween('transaction_date', [$start, $end])
         ->get();
@@ -42,17 +42,20 @@ class KPIController extends Controller
 
     public function GetNewSellers (Request $request,  $start, $end)
     {
-        $newSellers = DB::select('SELECT COUNT(*) as count FROM ( SELECT * FROM purchases as d ORDER BY d.created_at ASC LIMIT 1 ) as dd WHERE dd.created_at BETWEEN :start and :end',
+        $newSellers = DB::select("SELECT COUNT(DISTINCT merchant_id) as new_sellers, MONTHNAME(transaction_date)  AS 'month', YEAR(transaction_date) as 'year'
+            FROM (SELECT * FROM purchases WHERE `status` = 'paid' AND `merchant_id` != '1' AND `totalamount` > 0 GROUP BY merchant_id ORDER BY transaction_date DESC) rrr
+            WHERE `merchant_id` != '1' AND transaction_date BETWEEN :start and :end
+            GROUP BY MONTHNAME(transaction_date), YEAR(transaction_date) ORDER BY transaction_date DESC",
          [ 'start' =>  $start,  'end' => $end ]);
         return [
-            'data' =>  [ 'new_seller' => $newSellers[0]]
+            'data' =>  [ 'new_seller' => $newSellers]
         ];
     }
     public function GetMerchants (Request $request, $start, $end)
     {
         $merchants = User::groupBy('users.id')
         ->join('products', 'users.id', '=', 'products.merchant_id')
-        ->whereBetween('users.created_at', [$start, $end])
+        ->whereBetween('products.created_at', [$start, $end])
         ->get();
         return [
             'data' =>  [ 'merchants' => count($merchants)]
@@ -62,18 +65,37 @@ class KPIController extends Controller
 
     public function GetUniqueSellers (Request $request, $start, $end)
     {
-
-        $sellers = User::groupBy('users.id')
-        ->join('purchases', 'users.id', '=', 'purchases.merchant_id')
-        ->whereBetween('users.created_at', [$start, $end])
-        ->get();
+        $sellers = DB::select("SELECT COUNT(DISTINCT merchant_id) AS 'unique_sellers',  MONTHNAME(transaction_date)  AS 'month', YEAR(transaction_date) as 'year'
+        FROM purchases WHERE `status` = 'paid' AND `merchant_id` != '1' AND `totalamount` > 0   AND transaction_date BETWEEN :start and :end
+        GROUP BY  MONTHNAME(transaction_date), YEAR(transaction_date) ORDER BY created_at DESC",
+         [ 'start' =>  $start,  'end' => $end ]);
         return [
-            'data' =>  [ 'sellers' => count($sellers)]
+            'data' =>  [ 'sellers' => $sellers]
         ];
     }
     public function GetMerchantsMedian (Request $request, $start, $end)
     {
-        $sellers = DB::select('SELECT AVG(dd.totalamount) AS median_val FROM ( SELECT d.totalamount, @rownum := @rownum +1 AS `row_number`, @total_rows := @rownum FROM purchases AS d, ( SELECT @rownum := 0 ) r WHERE d.created_at BETWEEN :start and :end ORDER BY d.totalamount ) AS dd WHERE dd.row_number IN( FLOOR((@total_rows +1) / 2), FLOOR((@total_rows +2) / 2) )',
+
+
+        $sellers = DB::select("         SELECT p.merchant_total_monthly_volume_ngn as median_average,  p.month, p.year FROM ( SELECT t.*, @row_num := @row_num + 1 AS row_num  FROM (
+                SELECT  merchant_id,
+                        SUM(case currency
+                        when 'NGN' THEN  totalamount
+                        when 'USD' THEN  ROUND(totalamount*386, 2)
+                        when 'GBP' THEN  ROUND(totalamount*478.12, 2)
+                        when 'KES' THEN  ROUND(totalamount*3.64, 2)
+                        when 'GHS' THEN  ROUND(totalamount*66.95, 2)
+                        when 'ZAR' THEN  ROUND((totalamount*22), 2)
+                        ELSE 0 END) as merchant_total_monthly_volume_ngn,
+                        MONTHNAME(transaction_date)  AS 'month', YEAR(transaction_date) as 'year'
+                FROM purchases
+                WHERE `status` = 'paid' AND `merchant_id` != '1' AND `totalamount` > 0 AND  transaction_date BETWEEN :start and :end
+                GROUP BY  merchant_id, MONTHNAME(transaction_date), YEAR(transaction_date) ORDER BY merchant_total_monthly_volume_ngn ASC
+            ) AS t,
+            ( SELECT @row_num := 0 ) counter
+            ) p
+            WHERE
+            p.row_num = ROUND (.50 * @row_num );",
          ['start' =>  $start,  'end' => $end ] )
         ;
         return [
